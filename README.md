@@ -101,19 +101,20 @@ In the `.github/workflows/deploy_with_argocd.yaml` workflow file we do the follo
 
 So in summary, it enables GitOps workflow for provisioning and managing Kubernetes clusters using Argo CD, triggered by GitHub Actions.
 
-Notice that you will need to fill in 4 secrets in the GitHub Actions Secrets section as shown in the image below:
+Notice that you will need to fill in secrets in the GitHub Actions Secrets section as shown in the image below:
 
 ![GitHub Actions Secrets ](images/GitHub_Actions_Secrets.png)
 
 These are the secrets:
-AKEYLESS_ACCESS_ID and AKEYLESS_API_ACCESS_KEY -> Credentials to access Akeyless to eventually drop the vCluster Kubeconfig in a static secret there.
-ARGOCD_PASS -> the password you got from (kubectl get secret -n argocd argocd-initial-admin-secret -o json | jq -r '.data.password' | base64 --decode)
-ARGOCD_SERVER -> f1c6-24-150-170-114.ngrok-free.app (the ngrok server not URL, don't include https://)
+- AKEYLESS_ACCESS_ID and AKEYLESS_API_ACCESS_KEY -> Credentials to access Akeyless to eventually drop the vCluster Kubeconfig in a static secret there.
+- ARGOCD_USER -> admin
+- ARGOCD_PASS -> the password you got from (kubectl get secret -n argocd argocd-initial-admin-secret -o json | jq -r '.data.password' | base64 --decode)
+- ARGOCD_SERVER -> f1c6-24-150-170-114.ngrok-free.app (the ngrok server not URL, don't include https://)
 ARGOCD_USER -> admin
-AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY -> AWS credentials to access the EKS cluster and generate vClusters
-CF_API_TOKEN and CF_ZONE_ID -> Credentials and Zone ID to access Cloudflare and create DNS records for the vClusters
-MYGITHUB_TOKEN -> you will need to create a Classic GitHub token from developer settings as shown in the next two images, or use the same one you have for Backstage in the `backstage/my-backstage-app/secrets.sh` file.
-TARGET_DOMAIN -> this is the hostname of the LoadBalancer that Traefik's ingressRouteTCP creates to access the vClusters. (You will fill this out later after you create the EKS cluster.)
+- AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY -> AWS credentials to access the EKS cluster and generate vClusters
+- CF_API_TOKEN and CF_ZONE_ID -> Credentials and Zone ID to access Cloudflare and create DNS records for the vClusters
+- MYGITHUB_TOKEN -> you will need to create a Classic GitHub token from developer settings as shown in the next two images, or use the same one you have for Backstage in the `backstage/my-backstage-app/secrets.sh` file.
+- TARGET_DOMAIN -> this is the hostname of the LoadBalancer that Traefik's ingressRouteTCP creates to access the vClusters. (You will fill this out later after you create the EKS cluster.)
 
 ![Developer Settings](images/GitHub_Token_Settings.png)
 ![Token Scopes](images/GitHub_Token_Scopes.png)
@@ -247,7 +248,18 @@ To access Backstage, you can port-forward the service like this below (Make sure
 kubectl port-forward -n backstage service/backstage 7007:7007
 ```
 
+### Backstage Templates
+
 You will already have some built-in templates that were created with the backstage app that you can explore in the UI and also take a look at the template files in the `backstage/my-backstage-app/packages/backend/templates` directory.
+
+#### Update Templates as Needed
+
+You will need to check the templates and make the necessary updates to work with your forked repo, specifically the 
+`repoUrl: 'github.com?repo=platform-engineering-playground&owner=TeKanAid-Subscription'`
+
+Once you make the change, commit and push the changes.
+
+#### Register a New Template
 
 But let's register a new one directly from the UI.
 

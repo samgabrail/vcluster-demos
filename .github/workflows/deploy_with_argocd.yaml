@@ -44,7 +44,7 @@ jobs:
       run: argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USER }} --password ${{ secrets.ARGOCD_PASS }} --grpc-web --insecure
 
     - name: Register Repository in Argo CD
-      run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username samgabrail --password ${{ secrets.MYGITHUB_TOKEN }}
+      run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username ${{ github.actor }} --password ${{ secrets.MYGITHUB_TOKEN }}
 
     - name: Deploy Cluster with Argo CD
       run: |

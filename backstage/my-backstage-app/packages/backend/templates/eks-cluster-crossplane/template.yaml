@@ -81,8 +81,8 @@ spec:
       action: github:actions:dispatch
       input:
         workflowId: deploy_with_argocd.yaml
-        repoUrl: 'github.com?repo=platform-engineering-playground&owner=TeKanAid-Subscription'
-        branchOrTagName: 'main'
+        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
+        branchOrTagName: 'master'
         workflowInputs:
           clusterName: ${{ parameters.clusterName }}
           nodeSize: ${{ parameters.nodeSize }}

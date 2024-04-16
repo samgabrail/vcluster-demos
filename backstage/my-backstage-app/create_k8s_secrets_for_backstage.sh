@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define the input file with secret variables and the output file
-INPUT_FILE="/workspaces/platform-engineering-playground/backstage/my-backstage-app/secrets.sh"  # Replace with the path to your file with secrets
-OUTPUT_FILE="/workspaces/platform-engineering-playground/backstage/my-backstage-app/my-backstage-secrets.yaml"
+INPUT_FILE="my-backstage-app/secrets.sh"  # Replace with the path to your file with secrets
+OUTPUT_FILE="my-backstage-app/my-backstage-secrets.yaml"
 GOOGLE_CREDS_FILE="google-creds.json"  # Path to your Google credentials file
 
 # Start writing the Secret manifest
