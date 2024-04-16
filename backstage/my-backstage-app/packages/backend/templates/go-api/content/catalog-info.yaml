@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.apiName | dump }}
+  links:
+    - url: https://34.30.205.164:30000
+      title: App
+      icon: dashboard
+  annotations:
+    github.com/project-slug: samgabrail/${{ values.apiName }}
+    backstage.io/kubernetes-id: ${{ values.apiName }}
+    argocd/app-name: ${{ values.apiName }}
+  description: ${{ values.apiName }} running on Kubernetes
+spec:
+  type: service
+  owner: user:guest
+  lifecycle: experimental

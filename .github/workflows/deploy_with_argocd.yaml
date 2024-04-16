@@ -1,0 +1,60 @@
+name: Manage a K8s Cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: 'Cluster Name'
+        required: true
+      repoURLforArgo: 
+        description: 'The URL of the repository for Argo CD to deploy a K8s'
+        required: true
+      region:
+        description: 'For GKE clusters, Region'
+        required: false
+      machineType:
+        description: 'For GKE clusters, Machine Type'
+        required: false
+      nodeCount:
+        description: 'For GKE clusters, Node Count'
+        required: false
+      nodeSize:
+        description: 'For EKS clusters, the node size of the cluster to be deployed'
+        required: false
+      version:
+        description: 'For EKS clusters, the K8s version to deploy'
+        required: false
+      minNodeCount:
+        description: 'For EKS clusters, the minimum number of nodes in the cluster'
+        required: false
+
+jobs:
+  deploy-cluster:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Install Argo CD CLI
+      run: |
+        sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        sudo chmod +x /usr/local/bin/argocd
+
+    - name: Login to Argo CD
+      run: argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USER }} --password ${{ secrets.ARGOCD_PASS }} --grpc-web --insecure
+
+    - name: Register Repository in Argo CD
+      run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username samgabrail --password ${{ secrets.MYGITHUB_TOKEN }}
+
+    - name: Deploy Cluster with Argo CD
+      run: |
+          argocd app create ${{ github.event.inputs.clusterName }} \
+            --repo ${{ github.event.inputs.repoURLforArgo }} \
+            --path . \
+            --dest-server https://kubernetes.default.svc \
+            --dest-namespace ${{ github.event.inputs.clusterName }} \
+            --project default \
+            --sync-policy automated \
+            --sync-option CreateNamespace=true \
+            --upsert \
+            --grpc-web

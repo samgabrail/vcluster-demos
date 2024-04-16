@@ -1,0 +1,74 @@
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: Policy
+metadata:
+  labels:
+    custom-policy: "nodegroup-pvc-access"
+  name: pvc-policy
+spec:
+  forProvider:
+    policy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "ec2:CreateVolume",
+              "ec2:DeleteVolume",
+              "ec2:AttachVolume",
+              "ec2:DetachVolume"
+            ],
+            "Resource": "*"
+          },
+          {
+            "Effect": "Allow",
+            "Action": "ec2:CreateTags",
+            "Resource": "arn:aws:ec2:*:*:volume/*",
+            "Condition": {
+              "StringEquals": {
+                "ec2:CreateAction": "CreateVolume"
+              }
+            }
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "ec2:DescribeVolumes",
+              "ec2:DescribeVolumeStatus",
+              "ec2:DescribeVolumeAttribute"
+            ],
+            "Resource": "*"
+          }
+        ]
+      }
+---
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: sample-policy-attachment
+spec:
+  forProvider:
+    policyArnSelector:
+      matchLabels:
+        "custom-policy": "nodegroup-pvc-access" 
+    roleSelector:
+      matchLabels:
+        custom-policy: "nodegroup-pvc-access"
+---
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: Role
+metadata:
+  name: role-nodegroups
+  labels:
+    custom-policy: "nodegroup-pvc-access"
+spec:
+  forProvider:
+    assumeRolePolicy: |-
+      {
+        "Version": "2012-10-17",
+        "Statement": [{
+          "Effect": "Allow",
+          "Principal": {"Service": ["ec2.amazonaws.com"]},
+          "Action": ["sts:AssumeRole"]
+        }]
+      }

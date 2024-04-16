@@ -1,0 +1,16 @@
+apiVersion: devopstoolkitseries.com/v1alpha1
+kind: ClusterClaim
+metadata:
+  name: ${{ values.clusterName }}
+spec:
+  id: ${{ values.clusterName }}
+  compositionSelector:
+    matchLabels:
+      provider: aws
+      cluster: eks
+  parameters:
+    nodeSize: ${{ values.nodeSize }}
+    minNodeCount: ${{ values.minNodeCount }}
+    version: "${{ values.version }}"
+  writeConnectionSecretToRef:
+    name: ${{ values.clusterName }}

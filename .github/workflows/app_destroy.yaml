@@ -1,0 +1,50 @@
+name: Destroy an APP with its repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      apiName:
+        description: 'API Name'
+        required: true
+      repoURLforArgo: 
+        description: 'The URL of the repository to be destroyed'
+        required: true
+
+jobs:
+  destroy-api:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Install Argo CD CLI
+      run: |
+        sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        sudo chmod +x /usr/local/bin/argocd
+
+    - name: Login to Argo CD
+      run: argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USER }} --password ${{ secrets.ARGOCD_PASS }} --grpc-web
+
+    - name: Destroy API
+      run: |
+          argocd app delete ${{ github.event.inputs.apiName }} --cascade --grpc-web -y || true
+
+    - name: Extract and Construct Repo URL
+      id: repo-url
+      run: |
+        owner=$(echo "${{ github.event.inputs.repoURLforArgo }}" | sed -n 's/.*owner=\([^&]*\).*/\1/p')
+        repo=$(echo "${{ github.event.inputs.repoURLforArgo }}" | sed -n 's/.*repo=\([^&]*\).*/\1/p')
+        echo "Constructed URL: https://github.com/$owner/$repo.git"
+        echo "URL=https://github.com/$owner/$repo.git" >> $GITHUB_ENV
+        echo "REPO=$repo" >> $GITHUB_ENV
+        echo "OWNER=$owner" >> $GITHUB_ENV
+
+    - name: Unregister Repository from Argo CD
+      run: argocd repo rm $URL --grpc-web || true
+
+    - name: Delete GitHub Repository
+      run: |
+        echo "Deleting GitHub Repository $REPO"
+        curl -X DELETE -H "Authorization: token ${{ secrets.MYGITHUB_TOKEN }}" \
+        https://api.github.com/repos/$OWNER/$REPO

@@ -1,0 +1,62 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: gke-cluster-nodepool
+spec:
+  compositeTypeRef:
+    apiVersion: compositions.io/v1alpha1
+    kind: XCluster
+  resources:
+    - name: cluster
+      base:
+        apiVersion: container.gcp.upbound.io/v1beta1 
+        kind: Cluster
+        metadata:
+          labels:
+            cluster_name: gke
+        spec:
+          forProvider:
+            enableAutopilot: false
+            enableIntranodeVisibility: true
+            ipAllocationPolicy:
+              - {}
+            initialNodeCount: 1
+            location: us-central1
+            removeDefaultNodePool: true
+          writeConnectionSecretToRef:
+            name: gke-managed-resources-kubeconfig
+            namespace: upbound-system
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.location"
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "metadata.labels.cluster_name"
+
+    - name: nodepool
+      base:
+        apiVersion: container.gcp.upbound.io/v1beta1
+        kind: NodePool
+        spec:
+          forProvider:
+            clusterSelector:
+              matchLabels:
+                cluster_name: gke
+            nodeConfig:
+              - machineType: e2-medium
+                diskSizeGb: 50
+                oauthScopes:
+                  - https://www.googleapis.com/auth/cloud-platform
+                preemptible: true
+            nodeCount: 1
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.machineType"
+          toFieldPath: "spec.forProvider.nodeConfig[0].machineType"
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.nodeCount"
+          toFieldPath: "spec.forProvider.nodeCount"
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.parameters.clusterName"
+          toFieldPath: "spec.forProvider.clusterSelector.matchLabels.cluster_name"

@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.clusterName | dump }}
+  links:
+    - url: https://console.akeyless.io/items
+      title: Get Kubeconfig From Akeyless
+      icon: dashboard
+  annotations:
+    github.com/project-slug: samgabrail/${{ values.clusterName }}
+    backstage.io/kubernetes-id: ${{ values.clusterName }}
+    argocd/app-name: ${{ values.clusterName }}
+  description: ${{ values.clusterName }} vCluster
+spec:
+  type: service
+  owner: user:guest
+  lifecycle: experimental

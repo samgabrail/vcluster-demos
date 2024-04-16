@@ -1,0 +1,169 @@
+app:
+  # Should be the same as backend.baseUrl when using the `app-backend` plugin.
+  title: Scaffolded Backstage App
+  baseUrl: http://localhost:7007
+  
+organization:
+  name: TeKanAid
+
+backend:
+  # Note that the baseUrl should be the URL that the browser and other clients
+  # should use when communicating with the backend, i.e. it needs to be
+  # reachable not just from within the backend host, but from all of your
+  # callers. When its value is "http://localhost:7007", it's strictly private
+  # and can't be reached by others.
+  baseUrl: http://localhost:7007
+  # The listener can also be expressed as a single <host>:<port> string. In this case we bind to
+  # all interfaces, the most permissive setting. The right value depends on your specific deployment.
+  listen:
+    port: 7007
+
+  # config options: https://node-postgres.com/api/client
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      # https://node-postgres.com/features/ssl
+      # you can set the sslmode configuration option via the `PGSSLMODE` environment variable
+      # see https://www.postgresql.org/docs/current/libpq-ssl.html Table 33.1. SSL Mode Descriptions (e.g. require)
+      # ssl:
+      #   ca: # if you have a CA file and want to verify it you can uncomment this section
+      #     $file: <file-path>/ca/server.crt
+
+integrations:
+  github:
+    - host: github.com
+      # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
+      # about setting up the GitHub integration here: https://backstage.io/docs/getting-started/configuration#setting-up-a-github-integration
+      token: ${GITHUB_TOKEN}
+    ### Example for how to add your GitHub Enterprise instance using the API:
+    # - host: ghe.example.net
+    #   apiBaseUrl: https://ghe.example.net/api/v3
+    #   token: ${GHE_TOKEN}
+
+# proxy:
+  ### Example for how to add a proxy endpoint for the frontend.
+  ### A typical reason to do this is to handle HTTPS and CORS for internal services.
+  # endpoints:
+  #   '/test':
+  #     target: 'https://example.com'
+  #     changeOrigin: true
+proxy:
+  '/argocd/api':
+    target: https://argocd.tekanaid.com/api/v1/
+    changeOrigin: true
+    secure: true
+    headers:
+      Authorization: Bearer ${ARGOCD_AUTH_TOKEN}
+# Reference documentation http://backstage.io/docs/features/techdocs/configuration
+# Note: After experimenting with basic setup, use CI/CD to generate docs
+# and an external cloud storage when deploying TechDocs for production use-case.
+# https://backstage.io/docs/features/techdocs/how-to-guides#how-to-migrate-from-techdocs-basic-to-recommended-deployment-approach
+techdocs:
+  builder: 'local' # Alternatives - 'external'
+  generator:
+    runIn: 'docker' # Alternatives - 'local'
+  publisher:
+    type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
+
+auth:
+  # see https://backstage.io/docs/auth/ to learn about auth providers
+  providers:
+    github:
+      development:
+        clientId: ${AUTH_GITHUB_CLIENT_ID}
+        clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+    google:
+      development:
+        clientId: ${AUTH_GOOGLE_CLIENT_ID}
+        clientSecret: ${AUTH_GOOGLE_CLIENT_SECRET}
+
+# scaffolder:
+  # see https://backstage.io/docs/features/software-templates/configuration for software template options
+
+catalog:
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Group, User, Template, Location]
+  locations:
+    # Local example data, file locations are relative to the backend process, typically `packages/backend`
+    - type: file
+      target: /app/examples/entities.yaml
+
+    # Local example template
+    - type: file
+      target: /app/examples/template/template.yaml
+      rules:
+        - allow: [Template]
+
+    # Local example organizational data
+    - type: file
+      target: /app/examples/org.yaml
+      rules:
+        - allow: [User, Group]
+
+    # EKS Cluster
+    - type: file
+      target: /app/templates/eks-cluster/template.yaml
+      rules:
+        - allow: [Template, User, Group]
+
+    # GKE Cluster
+    - type: url
+      target: https://github.com/samgabrail/backstage/blob/main/my-backstage-app/packages/backend/templates/gke-cluster/template.yaml
+      rules:
+        - allow: [Template, User, Group]
+
+    # Go API need to register this template as an existing component and point to the url in github because then it can be dynamic and we can change the k8s url for argocd to deploy in our GKE cluster
+    # - type: url
+    #   target: https://github.com/samgabrail/backstage/blob/main/my-backstage-app/packages/backend/templates/go-api/template.yaml
+    #   rules:
+    #     - allow: [Template, User, Group]
+
+    # Go API Destroy
+    - type: url
+      target: https://github.com/samgabrail/backstage/blob/main/my-backstage-app/packages/backend/templates/go-api/template_destroy.yaml
+      rules:
+        - allow: [Template, User, Group]
+        
+    ## Uncomment these lines to add more example data
+    # - type: url
+    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
+
+    ## Uncomment these lines to add an example org
+    # - type: url
+    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml
+    #   rules:
+    #     - allow: [User, Group]
+
+kubernetes:
+  serviceLocatorMethod:
+    type: 'multiTenant'
+  clusterLocatorMethods:
+    - type: 'config'
+      clusters:
+        - url: https://192.168.1.81:6443
+          name: baremetal-k3s
+          authProvider: 'serviceAccount'
+          skipTLSVerify: false
+          skipMetricsLookup: false
+          serviceAccountToken: ${K8S_SA_TOKEN}
+          # dashboardUrl: http://127.0.0.1:64713 # url copied from running the command: minikube service kubernetes-dashboard -n kubernetes-dashboard
+          # dashboardApp: standard
+          caData: ${K8S_CONFIG_CA_DATA}
+          # caFile: '' # local path to CA file
+    - type: 'gke'
+      projectId: 'crossplaneprojects'
+      authProvider: 'google' # optional
+      skipTLSVerify: true # optional
+      skipMetricsLookup: false # optional
+      exposeDashboard: false # optional
+      # matchingResourceLabels: # optional
+      #   - key: 'environment'
+      #     value: 'production'
+    - type: 'catalog'

@@ -1,0 +1,83 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: vcluster
+  title: New Virtual Cluster
+  description: Get a new virtual cluster
+spec:
+  owner: user:guest
+  type: service
+
+  parameters:
+    - title: Choose a Repo location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location for ArgoCD to Deploy
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+    - title: Basic vCluster Configuration
+      required:
+        - clusterName
+        - k8sHostClusterURLforArgo
+      properties:
+        clusterName:
+          title: Cluster Name
+          type: string
+          description: The name of your virtual cluster
+          ui:autofocus: true
+        k8sHostClusterURLforArgo:
+          title: The host cluster to use
+          type: string
+          description: The host cluster to use
+          enum:
+            - https://196C767B331BAA2B637123CC80FE1622.gr7.us-east-1.eks.amazonaws.com
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          k8sHostClusterURLforArgo: ${{ parameters.k8sHostClusterURLforArgo }}
+    # This step publishes the contents of the working directory to GitHub.
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This is ${{ parameters.clusterName }}
+        repoUrl: ${{ parameters.repoUrl }}
+    # Start a GitHub Action to build an EKS cluster with Terraform
+    - id: github-action
+      name: Trigger GitHub Action
+      action: github:actions:dispatch
+      input:
+        workflowId: vcluster_deploy.yaml
+        repoUrl: 'github.com?repo=platform-engineering-playground&owner=TeKanAid-Subscription'
+        branchOrTagName: 'main'
+        workflowInputs:
+          clusterName: ${{ parameters.clusterName }}
+          k8sHostClusterURLforArgo: ${{ parameters.k8sHostClusterURLforArgo | string}}
+          repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
+    # The final step is to register our new component in the catalog.
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+        
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

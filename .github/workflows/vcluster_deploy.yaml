@@ -1,0 +1,99 @@
+name: Deploy a vCluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: 'vCluster Name'
+        required: true
+      repoURLforArgo: 
+        description: 'The URL of the repository for Argo CD to deploy the vCluster'
+        required: true
+      k8sHostClusterURLforArgo: 
+        description: 'The URL of the host K8s cluster in Argo CD for vcluster and API deployment'
+        required: true
+
+jobs:
+  deploy-vcluster:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Login to Akeyless
+      run: |
+        RESPONSE=$(curl --request POST \
+        --url https://api.akeyless.io/auth \
+        --header 'accept: application/json' \
+        --header 'content-type: application/json' \
+        --data '
+          {
+            "access-type": "access_key",
+            "json": true,
+            "access-id": "${{ secrets.AKEYLESS_ACCESS_ID }}",
+            "access-key": "${{ secrets.AKEYLESS_API_ACCESS_KEY }}"
+          }
+          ')
+        TOKEN=$(echo $RESPONSE | jq -r '.token')
+        echo "AKEYLESS_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+    - name: Install Argo CD CLI
+      run: |
+        sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        sudo chmod +x /usr/local/bin/argocd
+
+    - name: Login to Argo CD
+      run: argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USER }} --password ${{ secrets.ARGOCD_PASS }} --grpc-web
+
+    - name: Register Repository in Argo CD
+      run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username samgabrail --password ${{ secrets.MYGITHUB_TOKEN }}
+
+    - name: Get DNS Ready
+      run: backstage/my-backstage-app/packages/backend/templates/vcluster/content/vcluster_scripts/setdns.sh ${{ github.event.inputs.clusterName }} ${{ secrets.CF_ZONE_ID }} ${{ secrets.CF_API_TOKEN }} ${{ secrets.TARGET_DOMAIN }}
+
+    - name: Deploy vcluster
+      run: |
+        helm repo add loft https://charts.loft.sh
+        helm repo update
+        argocd app create ${{ github.event.inputs.clusterName }} \
+          --repo ${{ github.event.inputs.repoURLforArgo }} \
+          --path vcluster_scripts/vcluster-helm \
+          --helm-set vcluster.syncer.extraArgs[0]="--tls-san=${{ github.event.inputs.clusterName }}.tekanaid.com" \
+          --helm-set vcluster.syncer.extraArgs[1]="--out-kube-config-server=https://${{ github.event.inputs.clusterName }}.tekanaid.com" \
+          --dest-server ${{ github.event.inputs.k8sHostClusterURLforArgo }} \
+          --dest-namespace ${{ github.event.inputs.clusterName }} \
+          --project default \
+          --sync-policy automated \
+          --sync-option CreateNamespace=true \
+          --upsert \
+          --grpc-web
+        sleep 30
+
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+    - name: Save Kubeconfig in Akeyless
+      run: |
+        export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+        export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        # aws eks update-kubeconfig --region us-east-1 --name ${{ github.event.inputs.clusterName }}
+        aws eks update-kubeconfig --region us-east-1 --name a-team-eks
+        VCLUSTER_KUBECONFIG_BASE64=$(kubectl get secret vc-${{ github.event.inputs.clusterName }} -n ${{ github.event.inputs.clusterName }} --template={{.data.config}})
+        echo $VCLUSTER_KUBECONFIG_BASE64
+        $VCLUSTER_KUBECONFIG_BASE64 | base64 -d | echo
+        curl --request POST \
+        --url https://api.akeyless.io/update-secret-val \
+        --header 'accept: application/json' \
+        --header 'content-type: application/json' \
+        --data '
+          {
+            "accessibility": "regular",
+            "format": "text",
+            "json": true,
+            "token": "${{ env.AKEYLESS_TOKEN }}",
+            "name": "vclusters/Kubeconfig",
+            "value": "'"$VCLUSTER_KUBECONFIG_BASE64"'"
+          }
+          '

@@ -1,0 +1,69 @@
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-system
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: examples
+spec:
+  owner: guests
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-component
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: example-website
+spec:
+  type: website
+  lifecycle: experimental
+  owner: guests
+  system: examples
+  providesApis: [example-grpc-api]
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-api
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: example-grpc-api
+spec:
+  type: grpc
+  lifecycle: experimental
+  owner: guests
+  system: examples
+  definition: |
+    syntax = "proto3";
+
+    service Exampler {
+      rpc Example (ExampleMessage) returns (ExampleMessage) {};
+    }
+
+    message ExampleMessage {
+      string example = 1;
+    };
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: service-a
+  annotations:
+    backstage.io/kubernetes-id: service-a
+    backstage.io/kubernetes-cluster: baremetal-k3s
+    backstage.io/techdocs-ref: url:https://github.com/opentofu/opentofu/tree/main/docs
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+  system: examples
+  providesApis: [example-grpc-api]
+# ---
+# apiVersion: backstage.io/v1alpha1
+# kind: Resource
+# metadata:
+#   name: vmware-k3s
+#   annotations:
+#     kubernetes.io/api-server: 'https://masterk8s.tekanaid.com:6443'
+#     kubernetes.io/api-server-certificate-authority: # base64-encoded CA
+#     kubernetes.io/auth-provider: 'serviceAccount'
+#     kubernetes.io/skip-metrics-lookup: 'true'
+# spec:
+#   type: kubernetes-cluster
+#   owner: user:guest

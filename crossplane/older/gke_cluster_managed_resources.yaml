@@ -1,0 +1,37 @@
+apiVersion: container.gcp.upbound.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cluster_name: gke
+  name: gke-managed-resources
+spec:
+  forProvider:
+    enableAutopilot: false
+    enableIntranodeVisibility: true
+    ipAllocationPolicy:
+      - {}
+    initialNodeCount: 1
+    region: us-central1
+    removeDefaultNodePool: true
+  writeConnectionSecretToRef:
+    name: gke-managed-resources-kubeconfig
+    namespace: upbound-system
+---
+apiVersion: container.gcp.upbound.io/v1beta1
+kind: NodePool
+metadata:
+  labels:
+    cluster_name: gke
+  name: gke-managed-resources-nodepool
+spec:
+  forProvider:
+    clusterSelector:
+      matchLabels:
+        cluster_name: gke
+    nodeConfig:
+      - machineType: e2-small
+        diskSizeGb: 50
+        oauthScopes:
+          - https://www.googleapis.com/auth/cloud-platform
+        preemptible: true
+    nodeCount: 1

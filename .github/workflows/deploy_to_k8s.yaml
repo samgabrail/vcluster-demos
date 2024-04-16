@@ -1,0 +1,56 @@
+name: Build and Deploy Backstage App
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger the workflow on push events to tags like v1.0.2
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Install Helm
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+
+      - name: Install Dependencies and Build
+        run: |
+          yarn install --frozen-lockfile
+          yarn tsc
+          yarn build:backend --config ../../app-config.production.yaml
+        working-directory: my-backstage-app
+
+      - name: Build and Push Docker Image
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          docker image build . -f packages/backend/Dockerfile --tag samgabrail/backstage:$TAG
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+          docker push samgabrail/backstage:$TAG
+        working-directory: my-backstage-app
+        
+      - name: Deploy to Kubernetes
+        env:
+          KUBECONFIG_BASE64: ${{ secrets.KUBECONFIG }}
+        run: |
+          echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig
+          chmod 600 kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+          TAG=${GITHUB_REF#refs/tags/}
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add backstage https://backstage.github.io/charts
+          helm upgrade backstage backstage/backstage --namespace backstage -f values.yaml --set backstage.image.tag=$TAG
+        working-directory: my-backstage-app

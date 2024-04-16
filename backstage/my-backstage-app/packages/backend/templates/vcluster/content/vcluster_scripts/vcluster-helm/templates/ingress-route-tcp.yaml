@@ -1,0 +1,15 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: vcluster-ingress
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: HostSNI(`{{ .Release.Namespace }}.tekanaid.com`)
+      services:
+        - name: {{ .Release.Namespace }}
+          port: 443
+  tls:
+    passthrough: true

@@ -1,0 +1,96 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: eks-cluster-crossplane
+  title: New EKS Cluster with Crossplane
+  description: Deploy a New EKS Cluster using Crossplane
+spec:
+  owner: user:guest
+  type: service
+
+  parameters:
+    - title: Choose a Repo location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location for ArgoCD to Deploy
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+    - title: Basic EKS Cluster Configuration
+      required:
+        - clusterName
+        - nodeSize
+        - version
+        - minNodeCount
+      properties:
+        clusterName:
+          title: Cluster Name
+          type: string
+          description: The name of your EKS cluster
+          ui:autofocus: true
+        nodeSize:
+          title: NodeSize
+          type: string
+          description: The node size of the cluster to be deployed
+          enum:
+            - small
+            - medium
+            - large
+        version:
+          title: K8s Version
+          type: string
+          description: The K8s version to deploy
+          enum:
+            - "1.28"
+            - "1.29"
+        minNodeCount:
+          title: Minimum Node Count
+          type: number
+          description: The minimum number of nodes in the cluster
+          enum:
+            - 1
+            - 2
+            - 3
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          nodeSize: ${{ parameters.nodeSize }}
+          version: ${{ parameters.version | string }}
+          minNodeCount: ${{ parameters.minNodeCount | string}}
+    # This step publishes the contents of the working directory to GitHub.
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This is ${{ parameters.clusterName }}
+        repoUrl: ${{ parameters.repoUrl }}
+    # Start a GitHub Action to build an EKS cluster with Terraform
+    - id: github-action
+      name: Trigger GitHub Action
+      action: github:actions:dispatch
+      input:
+        workflowId: deploy_with_argocd.yaml
+        repoUrl: 'github.com?repo=platform-engineering-playground&owner=TeKanAid-Subscription'
+        branchOrTagName: 'main'
+        workflowInputs:
+          clusterName: ${{ parameters.clusterName }}
+          nodeSize: ${{ parameters.nodeSize }}
+          version: ${{ parameters.version }}
+          minNodeCount: ${{ parameters.minNodeCount | string}}
+          repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}

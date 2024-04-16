@@ -1,0 +1,95 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: gke-cluster
+  title: New GKE Cluster
+  description: Deploy a New GKE Cluster using Crossplane
+spec:
+  owner: user:guest
+  type: service
+
+  parameters:
+    - title: Choose a Repo location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location for ArgoCD to Deploy
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+    - title: Basic GKE Cluster Configuration
+      required:
+        - clusterName
+        - region
+        - machineType
+        - nodeCount
+      properties:
+        clusterName:
+          title: Cluster Name
+          type: string
+          description: The name of your GKE cluster
+          ui:autofocus: true
+        region:
+          title: Region
+          type: string
+          description: The region where the cluster will be deployed
+          enum:
+            - us-east1
+            - us-central1
+        machineType:
+          title: Machine Type
+          type: string
+          description: The type of machine to deploy the cluster nodes
+          enum:
+            - e2-small
+            - e2-medium
+        nodeCount:
+          title: Node Count
+          type: number
+          description: The number of nodes per AZ
+          enum:
+            - 1
+            - 2
+            - 3
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./content
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          region: ${{ parameters.region }}
+          machineType: ${{ parameters.machineType }}
+          nodeCount: ${{ parameters.nodeCount | string}}
+    # This step publishes the contents of the working directory to GitHub.
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This is ${{ parameters.clusterName }}
+        repoUrl: ${{ parameters.repoUrl }}
+    # Start a GitHub Action to build an GKE cluster with Terraform
+    - id: github-action
+      name: Trigger GitHub Action
+      action: github:actions:dispatch
+      input:
+        workflowId: deploy_with_argocd.yaml
+        repoUrl: 'github.com?repo=crossplane-gke&owner=samgabrail'
+        branchOrTagName: 'main'
+        workflowInputs:
+          clusterName: ${{ parameters.clusterName }}
+          region: ${{ parameters.region }}
+          machineType: ${{ parameters.machineType }}
+          nodeCount: ${{ parameters.nodeCount | string}}
+          repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}

@@ -1,0 +1,19 @@
+apiVersion: devopstoolkitseries.com/v1alpha1
+kind: ClusterClaim
+metadata:
+  name: a-team-eks
+spec:
+  id: a-team-eks
+  compositionSelector:
+    matchLabels:
+      provider: aws
+      cluster: eks
+  parameters:
+    nodeSize: small
+    minNodeCount: 1
+    version: "1.29"
+    apps: 
+      traefik:
+        enabled: true
+  writeConnectionSecretToRef:
+    name: a-team-eks

@@ -1,0 +1,13 @@
+export GITHUB_TOKEN=
+export AUTH_GITHUB_CLIENT_ID=
+export AUTH_GITHUB_CLIENT_SECRET=
+export K8S_CONFIG_CA_DATA=
+export K8S_SA_TOKEN=
+export GOOGLE_APPLICATION_CREDENTIALS=./google-creds.json
+export AUTH_GOOGLE_CLIENT_ID=
+export AUTH_GOOGLE_CLIENT_SECRET=
+export ARGOCD_AUTH_TOKEN=
+export admin_password=
+export user_password=
+export replication_password=
+yarn dev

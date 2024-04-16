@@ -1,0 +1,76 @@
+name: Deploy a Go API
+
+on:
+  workflow_dispatch:
+    inputs:
+      apiName:
+        description: 'API Name'
+        required: true
+      imageName:
+        description: 'Container Image Name'
+        required: true
+      repoURLforArgo: 
+        description: 'The URL of the repository for Argo CD to deploy the GO API'
+        required: true
+      k8sClusterURLforArgo: 
+        description: 'The URL of the K8s cluster in Argo CD for application deployment'
+        required: true
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean and Checkout Dockerfile Repository
+      run: |
+        CLEANED_URL=$(echo "${{ github.event.inputs.repoURLforArgo }}" | sed -e 's|https://github.com/||' -e 's|\.git$||')
+        echo "CLEANED_URL=${CLEANED_URL}" >> $GITHUB_ENV
+        echo "Cleaning and checking env ${{ env.CLEANED_URL }}"
+        echo "Cleaning and checking var ${CLEANED_URL}"
+      id: clean_repo
+
+    - name: Checkout Dockerfile Repository
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ env.CLEANED_URL }}
+        token: ${{ secrets.MYGITHUB_TOKEN }}
+        fetch-depth: 1
+
+    - name: Build and Push Docker Image to Docker Hub
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ github.event.inputs.imageName }}:${{ github.run_id }} .
+        docker tag ${{ secrets.DOCKER_USERNAME }}/${{ github.event.inputs.imageName }}:${{ github.run_id }} ${{ secrets.DOCKER_USERNAME }}/${{ github.event.inputs.imageName }}:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ github.event.inputs.imageName }}:${{ github.run_id }}
+        docker push ${{ secrets.DOCKER_USERNAME }}/${{ github.event.inputs.imageName }}:latest
+      
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Install Argo CD CLI
+      run: |
+        sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        sudo chmod +x /usr/local/bin/argocd
+
+    - name: Login to Argo CD
+      run: argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USER }} --password ${{ secrets.ARGOCD_PASS }} --grpc-web
+
+    - name: Register Repository in Argo CD
+      run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username samgabrail --password ${{ secrets.MYGITHUB_TOKEN }}
+
+    - name: Check Directory
+      run: |
+        pwd
+        ls -lah
+        whoami
+
+    - name: Deploy API
+      run: |
+        argocd app create ${{ github.event.inputs.apiName }} \
+          --repo ${{ github.event.inputs.repoURLforArgo }} \
+          --path ./Deployments \
+          --dest-server ${{ github.event.inputs.k8sClusterURLforArgo }} \
+          --dest-namespace ${{ github.event.inputs.apiName }} \
+          --project default \
+          --sync-policy automated \
+          --sync-option CreateNamespace=true \
+          --upsert \
+          --grpc-web
