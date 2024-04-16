@@ -82,7 +82,7 @@ spec:
       input:
         workflowId: deploy_with_argocd.yaml
         repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
-        branchOrTagName: 'main'
+        branchOrTagName: 'master'
         workflowInputs:
           clusterName: ${{ parameters.clusterName }}
           nodeSize: ${{ parameters.nodeSize }}
