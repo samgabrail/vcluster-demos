@@ -1,6 +1,6 @@
 # Overview
 
-A Playground For Platform Engineering Tools
+This repo is used for demoing vCluster in a Platform Engineering Playground. Tools used are:
 
 - ArgoCD
 - Crossplane
