@@ -107,6 +107,7 @@ Notice that you will need to fill in secrets in the GitHub Actions Secrets secti
 
 These are the secrets:
 - AKEYLESS_ACCESS_ID and AKEYLESS_API_ACCESS_KEY -> Credentials to access Akeyless to eventually drop the vCluster Kubeconfig in a static secret there.
+- ARGOCD_USER -> admin
 - ARGOCD_PASS -> the password you got from (kubectl get secret -n argocd argocd-initial-admin-secret -o json | jq -r '.data.password' | base64 --decode)
 - ARGOCD_SERVER -> f1c6-24-150-170-114.ngrok-free.app (the ngrok server not URL, don't include https://)
 ARGOCD_USER -> admin
