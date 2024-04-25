@@ -52,9 +52,9 @@ integrations:
   #     changeOrigin: true
 proxy:
   '/argocd/api':
-    target: https://argocd.tekanaid.com/api/v1/
+    target: https://argocd-server.argocd.svc.cluster.local/api/v1/
     changeOrigin: true
-    secure: true
+    secure: false
     headers:
       Authorization: Bearer ${ARGOCD_AUTH_TOKEN}
 

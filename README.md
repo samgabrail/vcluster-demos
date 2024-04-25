@@ -179,8 +179,8 @@ kubectl get managed
 ### Access the Cluster
 
 ```bash
-kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > a-team-eks-kubeconfig.yaml
-export KUBECONFIG=$(pwd)/a-team-eks-kubeconfig.yaml
+kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > eks-kubeconfig.yaml
+export KUBECONFIG=$(pwd)/eks-kubeconfig.yaml
 kubectl get nodes
 kubectl get namespaces
 ```
@@ -232,7 +232,7 @@ in the `backstage/my-backstage-app/values.yaml` file uncomment the following lin
 ```
 5. Finally run the `helm` command to install Backstage:
 ```bash
-helm upgrade --install backstage backstage/backstage --namespace backstage -f /workspaces/platform-engineering-playground/backstage/my-backstage-app/values.yaml --set backstage.image.tag=v1.0.5
+helm upgrade --install backstage backstage/backstage --namespace backstage -f /workspaces/platform-engineering-playground/backstage/my-backstage-app/values.yaml --set backstage.image.tag=v0.0.2
 ```
 
 Wait until both the backstage and postgresql pods are running:
@@ -285,8 +285,8 @@ kubectl get managed
 The name of the cluster you chose when filling out the Backstage template will be the name of the secret, e.g. `a-team-eks-cluster`. You can then use the following commands to access the new EKS cluster:
 
 ```bash
-kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > a-team-eks-kubeconfig.yaml
-export KUBECONFIG=$(pwd)/a-team-eks-kubeconfig.yaml
+kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > eks-kubeconfig.yaml
+export KUBECONFIG=$(pwd)/eks-kubeconfig.yaml
 kubectl get nodes
 kubectl get namespaces
 ```
@@ -318,6 +318,31 @@ kubectl get svc traefik -n traefik -o=jsonpath='{.status.loadBalancer.ingress[0]
 ```
 
 Now add this value to the `TARGET_DOMAIN` GitHub Actions secret.
+
+### Add the new EKS Cluster Endpoint to Backstage Template
+
+As platform engineers, we need to add the endpoint for our EKS cluster inside our new vCluster template in Backstage.
+
+You can get the value of the endpoint from ArgoCD under settings > clusters and get the server URL under General.
+
+Now update the `backstage/my-backstage-app/packages/backend/templates/vcluster/template.yaml` file with the new endpoint under `enum` in the `k8sHostClusterURLforArgo` field. Here is an example below.
+
+```yaml
+       k8sHostClusterURLforArgo:
+          title: The host cluster to use
+          type: string
+          description: The host cluster to use
+          enum:
+            - https://196C767B331BAA2B637123CC80FE1622.gr7.us-east-1.eks.amazonaws.com
+```
+
+Also remember to update the `github-action` step in the template with the appropriate parameters for your GitHub actions workflow name, the repo and branch name. Here is an example below.
+
+```yaml
+        workflowId: vcluster_deploy.yaml
+        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
+        branchOrTagName: 'master'
+```
 
 ### Register a New vCluster Template in Backstage
 
@@ -352,4 +377,4 @@ kubectl get ns
 kubectl get nodes
 ```
 
-#### Congrats on building an Internal Developer Platform!
+#### Congrats on building an Internal Developer Platform with vCluster!

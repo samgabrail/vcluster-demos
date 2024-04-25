@@ -12,7 +12,7 @@ spec:
     nodeSize: small
     minNodeCount: 1
     version: "1.29"
-    apps: 
+    apps:
       traefik:
         enabled: true
   writeConnectionSecretToRef:

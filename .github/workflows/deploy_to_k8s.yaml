@@ -29,7 +29,7 @@ jobs:
           yarn install --frozen-lockfile
           yarn tsc
           yarn build:backend --config ../../app-config.production.yaml
-        working-directory: my-backstage-app
+        working-directory: backstage/my-backstage-app
 
       - name: Build and Push Docker Image
         env:
@@ -40,17 +40,17 @@ jobs:
           docker image build . -f packages/backend/Dockerfile --tag samgabrail/backstage:$TAG
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker push samgabrail/backstage:$TAG
-        working-directory: my-backstage-app
+        working-directory: backstage/my-backstage-app
         
-      - name: Deploy to Kubernetes
-        env:
-          KUBECONFIG_BASE64: ${{ secrets.KUBECONFIG }}
-        run: |
-          echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig
-          chmod 600 kubeconfig
-          export KUBECONFIG=$(pwd)/kubeconfig
-          TAG=${GITHUB_REF#refs/tags/}
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo add backstage https://backstage.github.io/charts
-          helm upgrade backstage backstage/backstage --namespace backstage -f values.yaml --set backstage.image.tag=$TAG
-        working-directory: my-backstage-app
+      # - name: Deploy to Kubernetes
+      #   env:
+      #     KUBECONFIG_BASE64: ${{ secrets.KUBECONFIG }}
+      #   run: |
+      #     echo "$KUBECONFIG_BASE64" | base64 -d > ./kubeconfig
+      #     chmod 600 kubeconfig
+      #     export KUBECONFIG=$(pwd)/kubeconfig
+      #     TAG=${GITHUB_REF#refs/tags/}
+      #     helm repo add bitnami https://charts.bitnami.com/bitnami
+      #     helm repo add backstage https://backstage.github.io/charts
+      #     helm upgrade backstage backstage/backstage --namespace backstage -f values.yaml --set backstage.image.tag=$TAG
+      #   working-directory: backstage/my-backstage-app
