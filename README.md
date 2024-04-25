@@ -179,8 +179,8 @@ kubectl get managed
 ### Access the Cluster
 
 ```bash
-kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > a-team-eks-kubeconfig.yaml
-export KUBECONFIG=$(pwd)/a-team-eks-kubeconfig.yaml
+kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > eks-kubeconfig.yaml
+export KUBECONFIG=$(pwd)/eks-kubeconfig.yaml
 kubectl get nodes
 kubectl get namespaces
 ```
@@ -285,8 +285,8 @@ kubectl get managed
 The name of the cluster you chose when filling out the Backstage template will be the name of the secret, e.g. `a-team-eks-cluster`. You can then use the following commands to access the new EKS cluster:
 
 ```bash
-kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > a-team-eks-kubeconfig.yaml
-export KUBECONFIG=$(pwd)/a-team-eks-kubeconfig.yaml
+kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > eks-kubeconfig.yaml
+export KUBECONFIG=$(pwd)/eks-kubeconfig.yaml
 kubectl get nodes
 kubectl get namespaces
 ```
