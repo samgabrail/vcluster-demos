@@ -319,6 +319,23 @@ kubectl get svc traefik -n traefik -o=jsonpath='{.status.loadBalancer.ingress[0]
 
 Now add this value to the `TARGET_DOMAIN` GitHub Actions secret.
 
+### Add the new EKS Cluster Endpoint to Backstage Template
+
+As platform engineers, we need to add the endpoint for our EKS cluster inside our new vCluster template in Backstage.
+
+You can get the value of the endpoint from ArgoCD under settings > clusters and get the server URL under General.
+
+Now update the `backstage/my-backstage-app/packages/backend/templates/vcluster/template.yaml` file with the new endpoint under `enum` in the `k8sHostClusterURLforArgo` field. Here is an example below.
+
+```yaml
+       k8sHostClusterURLforArgo:
+          title: The host cluster to use
+          type: string
+          description: The host cluster to use
+          enum:
+            - https://196C767B331BAA2B637123CC80FE1622.gr7.us-east-1.eks.amazonaws.com
+```
+
 ### Register a New vCluster Template in Backstage
 
 Let's register a new template for creating a vCluster in Backstage.
