@@ -60,8 +60,8 @@ spec:
       action: github:actions:dispatch
       input:
         workflowId: vcluster_deploy.yaml
-        repoUrl: 'github.com?repo=platform-engineering-playground&owner=TeKanAid-Subscription'
-        branchOrTagName: 'main'
+        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
+        branchOrTagName: 'master'
         workflowInputs:
           clusterName: ${{ parameters.clusterName }}
           k8sHostClusterURLforArgo: ${{ parameters.k8sHostClusterURLforArgo | string}}

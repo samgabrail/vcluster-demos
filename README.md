@@ -336,6 +336,14 @@ Now update the `backstage/my-backstage-app/packages/backend/templates/vcluster/t
             - https://196C767B331BAA2B637123CC80FE1622.gr7.us-east-1.eks.amazonaws.com
 ```
 
+Also remember to update the `github-action` step in the template with the appropriate parameters for your GitHub actions workflow name, the repo and branch name. Here is an example below.
+
+```yaml
+        workflowId: vcluster_deploy.yaml
+        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
+        branchOrTagName: 'master'
+```
+
 ### Register a New vCluster Template in Backstage
 
 Let's register a new template for creating a vCluster in Backstage.
