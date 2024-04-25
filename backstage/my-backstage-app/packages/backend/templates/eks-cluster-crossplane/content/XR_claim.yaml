@@ -12,5 +12,8 @@ spec:
     nodeSize: ${{ values.nodeSize }}
     minNodeCount: ${{ values.minNodeCount }}
     version: "${{ values.version }}"
+    apps:
+      traefik:
+        enabled: true
   writeConnectionSecretToRef:
     name: ${{ values.clusterName }}
