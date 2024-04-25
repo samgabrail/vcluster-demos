@@ -377,4 +377,4 @@ kubectl get ns
 kubectl get nodes
 ```
 
-#### Congrats on building an Internal Developer Platform!
+#### Congrats on building an Internal Developer Platform with vCluster!
