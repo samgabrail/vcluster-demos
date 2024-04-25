@@ -66,6 +66,7 @@ spec:
           clusterName: ${{ parameters.clusterName }}
           k8sHostClusterURLforArgo: ${{ parameters.k8sHostClusterURLforArgo | string}}
           repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
+          hostClusterName: eks-host-cluster
     # The final step is to register our new component in the catalog.
     - id: register
       name: Register
