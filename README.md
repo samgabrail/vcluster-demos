@@ -232,7 +232,7 @@ in the `backstage/my-backstage-app/values.yaml` file uncomment the following lin
 ```
 5. Finally run the `helm` command to install Backstage:
 ```bash
-helm upgrade --install backstage backstage/backstage --namespace backstage -f /workspaces/platform-engineering-playground/backstage/my-backstage-app/values.yaml --set backstage.image.tag=v1.0.5
+helm upgrade --install backstage backstage/backstage --namespace backstage -f /workspaces/platform-engineering-playground/backstage/my-backstage-app/values.yaml --set backstage.image.tag=v0.0.2
 ```
 
 Wait until both the backstage and postgresql pods are running:
