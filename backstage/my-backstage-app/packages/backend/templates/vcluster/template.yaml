@@ -36,7 +36,7 @@ spec:
           description: The host cluster to use
           enum:
             - https://5D795F1CE2F22C3B3BB93E19AA666DF4.gr7.us-east-1.eks.amazonaws.com
-            - 
+            - https://34.139.219.170
 
   steps:
     - id: fetch-base
