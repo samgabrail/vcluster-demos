@@ -9,24 +9,15 @@ on:
       repoURLforArgo: 
         description: 'The URL of the repository for Argo CD to deploy a K8s'
         required: true
-      region:
-        description: 'For GKE clusters, Region'
-        required: false
-      machineType:
-        description: 'For GKE clusters, Machine Type'
-        required: false
-      nodeCount:
-        description: 'For GKE clusters, Node Count'
-        required: false
       nodeSize:
-        description: 'For EKS clusters, the node size of the cluster to be deployed'
-        required: false
+        description: 'The node size of the cluster to be deployed'
+        required: true
       version:
-        description: 'For EKS clusters, the K8s version to deploy'
-        required: false
+        description: 'The K8s version to deploy'
+        required: true
       minNodeCount:
-        description: 'For EKS clusters, the minimum number of nodes in the cluster'
-        required: false
+        description: 'The minimum number of nodes in the cluster'
+        required: true
 
 jobs:
   deploy-cluster:

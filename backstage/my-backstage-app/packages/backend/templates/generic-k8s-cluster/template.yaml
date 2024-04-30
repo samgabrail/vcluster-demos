@@ -92,7 +92,7 @@ spec:
         allowedHosts: ['github.com']
         description: This is ${{ parameters.clusterName }}
         repoUrl: ${{ parameters.repoUrl }}
-    # Start a GitHub Action to build an the K8s cluster
+    # Start a GitHub Action to build the K8s cluster
     - id: github-action
       name: Trigger GitHub Action
       action: github:actions:dispatch
