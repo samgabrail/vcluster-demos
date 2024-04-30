@@ -27,7 +27,6 @@ spec:
         - version
         - minNodeCount
         - provider
-        - cluster
       properties:
         clusterName:
           title: Cluster Name
@@ -65,14 +64,6 @@ spec:
             - aws
             - google
             - azure
-        cluster:
-          title: ClusterType
-          type: string
-          description: The cluster type to deploy
-          enum:
-            - eks
-            - gke
-            - aks
   steps:
     - id: fetch-base
       name: Fetch Base
