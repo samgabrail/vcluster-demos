@@ -138,3 +138,4 @@ crossplane/aws_credentials.conf
 *a-team-eks-kubeconfig.yaml
 *vcluster_kubeconfig.yaml
 gke-kubeconfig.yaml
+gke_gcloud_auth_plugin_cache
