@@ -123,7 +123,9 @@ ARGOCD_USER -> admin
 
 Most of the crossplane configuration in this repo were taken from Viktor Farcic, so shout out to him. Here is his original repo: https://github.com/vfarcic/crossplane-kubernetes
 
-### Step 1: Prepare Your AWS Credentials
+### AWS
+
+#### Step 1: Prepare Your Credentials
 
 Make sure you're in the `crossplane` folder.
 
@@ -138,6 +140,7 @@ aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
 ```
 
 Replace `YOUR_ACCESS_KEY_ID` and `YOUR_SECRET_ACCESS_KEY` with your actual AWS credentials and rename the file to `aws_credentials.conf`. If you are a TeKanAid Premium subscriber, you can get these credentials from the TeKanAid lesson for setting up AWS.
+
 
 ### Step 2: Create the Secret in Kubernetes
 
@@ -164,6 +167,33 @@ kubectl get secret aws-creds -n crossplane-system -o yaml
 
 This command shows the details of the `aws-creds` secret. For security reasons, the actual credentials content will be base64 encoded.
 
+### GCP
+
+From the root of the repo run the following. Make sure you have your `google-creds.json` file present at `backstage/my-backstage-app/packages/backend/google-creds.json`
+```bash
+kubectl --namespace crossplane-system \
+    create secret generic gcp-creds \
+    --from-file creds=./backstage/my-backstage-app/packages/backend/google-creds.json
+```
+
+Now create the ProviderConfig after replacing the `<PROJECT_ID>` with your own project ID.
+
+```bash
+export PROJECT_ID=<PROJECT_ID>
+echo "apiVersion: gcp.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  projectID: $PROJECT_ID
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: gcp-creds
+      key: creds" \
+    | kubectl apply --filename -
+```
 
 ## Create EKS Cluster with Crossplane
 
@@ -178,11 +208,21 @@ kubectl get managed
 
 ### Access the Cluster
 
+#### AWS
+
 ```bash
 kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > eks-kubeconfig.yaml
 export KUBECONFIG=$(pwd)/eks-kubeconfig.yaml
 kubectl get nodes
 kubectl get namespaces
+```
+
+#### GCP
+
+To get the kubeconfig:
+
+```bash
+gcloud container clusters get-credentials samgke2 --region us-east1 --project crossplaneprojects
 ```
 
 ## Delete the EKS Cluster with Crossplane

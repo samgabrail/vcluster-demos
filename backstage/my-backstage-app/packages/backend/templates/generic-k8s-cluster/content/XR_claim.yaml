@@ -7,7 +7,7 @@ spec:
   compositionSelector:
     matchLabels:
       provider: ${{ values.provider }}
-      cluster: ${{ values.cluster }}
+      cluster: ${{ (values.provider === 'aws' and 'eks') or (values.provider === 'google' and 'gke') or (values.provider === 'azure' and 'aks') }}
   parameters:
     nodeSize: ${{ values.nodeSize }}
     minNodeCount: ${{ values.minNodeCount }}
