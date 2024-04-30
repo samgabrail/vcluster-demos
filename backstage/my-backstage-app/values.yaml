@@ -139,15 +139,15 @@ backstage:
 
   # -- Backstage container additional volume mounts
   extraVolumeMounts:
-    # - name: google-creds-volume
-    #   mountPath: "/etc/secrets"
-    #   readOnly: true
+    - name: google-creds-volume
+      mountPath: "/etc/secrets"
+      readOnly: true
 
   # -- Backstage container additional volumes
   extraVolumes:
-    # - name: google-creds-volume
-    #   secret:
-    #     secretName: google-creds
+    - name: google-creds-volume
+      secret:
+        secretName: google-creds
 
   # -- Backstage container init containers
   initContainers: []
