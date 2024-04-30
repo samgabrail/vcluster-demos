@@ -82,6 +82,8 @@ spec:
         values:
           clusterName: ${{ parameters.clusterName }}
           nodeSize: ${{ parameters.nodeSize }}
+          provider: ${{ parameters.provider }}
+          cluster: ${{ parameters.cluster }}
           version: ${{ parameters.version | string }}
           minNodeCount: ${{ parameters.minNodeCount | string}}
     # This step publishes the contents of the working directory to GitHub.
