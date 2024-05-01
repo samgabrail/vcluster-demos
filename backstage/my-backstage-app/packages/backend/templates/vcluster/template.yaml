@@ -74,13 +74,16 @@ spec:
         branchOrTagName: 'master'
         workflowInputs:
           clusterName: ${{ parameters.clusterName }}
-          k8sHostClusterURLforArgo: ${{ parameters.k8sHostClusterURLforArgo | string}}
+          # k8sHostClusterURLforArgo: ${{ parameters.k8sHostClusterURLforArgo | string}}
           repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
           hostEKSClusterName: eks-host-cluster
+          hostEKS_URLforArgo: https://5D795F1CE2F22C3B3BB93E19AA666DF4.gr7.us-east-1.eks.amazonaws.com
           # hostGKEClusterName: gke-host-cluster
           hostGKEClusterName: samgke
           hostGKEprojectName: crossplaneprojects
+          hostGKE_URLforArgo: https://34.23.68.174
           hostAKSClusterName: aks-host-cluster
+          hostAKS_URLforArgo: https://
           hostClusterType: ${{ parameters.hostClusterType | string}}
     # The final step is to register our new component in the catalog.
     - id: register

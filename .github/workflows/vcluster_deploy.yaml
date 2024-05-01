@@ -9,24 +9,31 @@ on:
       repoURLforArgo: 
         description: 'The URL of the repository for Argo CD to deploy the vCluster'
         required: true
-      k8sHostClusterURLforArgo: 
-        description: 'The URL of the host K8s cluster in Argo CD for vcluster and API deployment'
-        required: false
+      hostClusterType:
+        description: 'The type of the host K8s cluster, either eks, gke, or aks'
+        required: true      
       hostEKSClusterName:
         description: 'The name of the host EKS cluster'
+        required: false
+      hostEKS_URLforArgo: 
+        description: 'The URL of the host EKS cluster in Argo CD for vcluster and API deployment'
         required: false
       hostAKSClusterName:
         description: 'The name of the host AKS cluster'
         required: false
+      hostAKS_URLforArgo: 
+        description: 'The URL of the host AKS cluster in Argo CD for vcluster and API deployment'
+        required: false
       hostGKEClusterName:
         description: 'The name of the host GKE cluster'
+        required: false
+      hostGKE_URLforArgo: 
+        description: 'The URL of the host GKE cluster in Argo CD for vcluster and API deployment'
         required: false
       hostGKEprojectName:
         description: 'The name of the host GKE project'
         required: false
-      hostClusterType:
-        description: 'The type of the host K8s cluster, either eks, gke, or aks'
-        required: true
+
 jobs:
   deploy-vcluster:
     runs-on: ubuntu-latest
@@ -69,12 +76,23 @@ jobs:
       run: |
         helm repo add loft https://charts.loft.sh
         helm repo update
+        if [ "${{ github.event.inputs.hostClusterType }}" = "eks" ]; then
+          DEST_SERVER="${{ github.event.inputs.hostEKS_URLforArgo }}"
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "gke" ]; then
+          DEST_SERVER="${{ github.event.inputs.hostGKE_URLforArgo }}"
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "aks" ]; then
+          DEST_SERVER="${{ github.event.inputs.hostAKS_URLforArgo }}"
+        else
+          echo "Unsupported cluster type: ${{ github.event.inputs.hostClusterType }}"
+          exit 1
+        fi
+    
         argocd app create ${{ github.event.inputs.clusterName }} \
           --repo ${{ github.event.inputs.repoURLforArgo }} \
           --path vcluster_scripts/vcluster-helm \
           --helm-set vcluster.syncer.extraArgs[0]="--tls-san=${{ github.event.inputs.clusterName }}.tekanaid.com" \
           --helm-set vcluster.syncer.extraArgs[1]="--out-kube-config-server=https://${{ github.event.inputs.clusterName }}.tekanaid.com" \
-          --dest-server ${{ github.event.inputs.k8sHostClusterURLforArgo }} \
+          --dest-server $DEST_SERVER \
           --dest-namespace ${{ github.event.inputs.clusterName }} \
           --project default \
           --sync-policy automated \
@@ -82,6 +100,7 @@ jobs:
           --upsert \
           --grpc-web
         sleep 30
+    
 
     - name: Install kubectl
       run: |
