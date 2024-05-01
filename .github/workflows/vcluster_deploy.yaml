@@ -9,12 +9,31 @@ on:
       repoURLforArgo: 
         description: 'The URL of the repository for Argo CD to deploy the vCluster'
         required: true
-      k8sHostClusterURLforArgo: 
-        description: 'The URL of the host K8s cluster in Argo CD for vcluster and API deployment'
-        required: true
-      hostClusterName:
-        description: 'The name of the host K8s cluster'
-        required: true
+      hostClusterType:
+        description: 'The type of the host K8s cluster, either eks, gke, or aks'
+        required: true      
+      hostEKSClusterName:
+        description: 'The name of the host EKS cluster'
+        required: false
+      hostEKS_URLforArgo: 
+        description: 'The URL of the host EKS cluster in Argo CD for vcluster and API deployment'
+        required: false
+      hostAKSClusterName:
+        description: 'The name of the host AKS cluster'
+        required: false
+      hostAKS_URLforArgo: 
+        description: 'The URL of the host AKS cluster in Argo CD for vcluster and API deployment'
+        required: false
+      hostGKEClusterName:
+        description: 'The name of the host GKE cluster'
+        required: false
+      hostGKE_URLforArgo: 
+        description: 'The URL of the host GKE cluster in Argo CD for vcluster and API deployment'
+        required: false
+      hostGKEprojectName:
+        description: 'The name of the host GKE project'
+        required: false
+
 jobs:
   deploy-vcluster:
     runs-on: ubuntu-latest
@@ -51,18 +70,29 @@ jobs:
       run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username samgabrail --password ${{ secrets.MYGITHUB_TOKEN }}
 
     - name: Get DNS Ready
-      run: backstage/my-backstage-app/packages/backend/templates/vcluster/content/vcluster_scripts/setdns.sh ${{ github.event.inputs.clusterName }} ${{ secrets.CF_ZONE_ID }} ${{ secrets.CF_API_TOKEN }} ${{ secrets.TARGET_DOMAIN }}
+      run: backstage/my-backstage-app/packages/backend/templates/vcluster/content/vcluster_scripts/setdns.sh ${{ github.event.inputs.clusterName }} ${{ secrets.CF_ZONE_ID }} ${{ secrets.CF_API_TOKEN }} ${{ secrets.TARGET_DOMAIN }} ${{ github.event.inputs.hostClusterType }}
 
     - name: Deploy vcluster
       run: |
         helm repo add loft https://charts.loft.sh
         helm repo update
+        if [ "${{ github.event.inputs.hostClusterType }}" = "eks" ]; then
+          DEST_SERVER="${{ github.event.inputs.hostEKS_URLforArgo }}"
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "gke" ]; then
+          DEST_SERVER="${{ github.event.inputs.hostGKE_URLforArgo }}"
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "aks" ]; then
+          DEST_SERVER="${{ github.event.inputs.hostAKS_URLforArgo }}"
+        else
+          echo "Unsupported cluster type: ${{ github.event.inputs.hostClusterType }}"
+          exit 1
+        fi
+    
         argocd app create ${{ github.event.inputs.clusterName }} \
           --repo ${{ github.event.inputs.repoURLforArgo }} \
           --path vcluster_scripts/vcluster-helm \
           --helm-set vcluster.syncer.extraArgs[0]="--tls-san=${{ github.event.inputs.clusterName }}.tekanaid.com" \
           --helm-set vcluster.syncer.extraArgs[1]="--out-kube-config-server=https://${{ github.event.inputs.clusterName }}.tekanaid.com" \
-          --dest-server ${{ github.event.inputs.k8sHostClusterURLforArgo }} \
+          --dest-server $DEST_SERVER \
           --dest-namespace ${{ github.event.inputs.clusterName }} \
           --project default \
           --sync-policy automated \
@@ -70,17 +100,38 @@ jobs:
           --upsert \
           --grpc-web
         sleep 30
+    
 
     - name: Install kubectl
       run: |
         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
         sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
+    - name: Auth with Google Cloud
+      if: ${{ github.event.inputs.hostClusterType }} == 'gke'
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      if: ${{ github.event.inputs.hostClusterType }} == 'gke'
+      uses: google-github-actions/setup-gcloud@v2
+
     - name: Save Kubeconfig in Akeyless
       run: |
-        export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-        export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws eks update-kubeconfig --region us-east-1 --name ${{ github.event.inputs.hostClusterName }}
+        if [ "${{ github.event.inputs.hostClusterType }}" = "eks" ]; then
+          echo "Configuring AWS EKS..."
+          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws eks update-kubeconfig --region us-east-1 --name ${{ github.event.inputs.hostEKSClusterName }}
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "gke" ]; then
+          echo "Configuring GCP GKE..."
+          gcloud components install gke-gcloud-auth-plugin
+          gcloud container clusters get-credentials ${{ github.event.inputs.hostGKEClusterName }} --region us-east1 --project ${{ github.event.inputs.hostGKEprojectName }}
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "aks" ]; then
+          echo "Configuring Azure AKS..."
+          # Add commands to configure AKS kubeconfig here
+        fi
         VCLUSTER_KUBECONFIG_BASE64=$(kubectl get secret vc-${{ github.event.inputs.clusterName }} -n ${{ github.event.inputs.clusterName }} --template={{.data.config}})
         echo $VCLUSTER_KUBECONFIG_BASE64
         $VCLUSTER_KUBECONFIG_BASE64 | base64 -d | echo

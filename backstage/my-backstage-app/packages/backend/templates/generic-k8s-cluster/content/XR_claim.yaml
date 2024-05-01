@@ -1,0 +1,19 @@
+apiVersion: devopstoolkitseries.com/v1alpha1
+kind: ClusterClaim
+metadata:
+  name: ${{ values.clusterName }}
+spec:
+  id: ${{ values.clusterName }}
+  compositionSelector:
+    matchLabels:
+      provider: ${{ values.provider }}
+      cluster: ${{ (values.provider === 'aws' and 'eks') or (values.provider === 'google' and 'gke') or (values.provider === 'azure' and 'aks') }}
+  parameters:
+    nodeSize: ${{ values.nodeSize }}
+    minNodeCount: ${{ values.minNodeCount }}
+    version: "${{ values.version }}"
+    apps:
+      traefik:
+        enabled: true
+  writeConnectionSecretToRef:
+    name: ${{ values.clusterName }}

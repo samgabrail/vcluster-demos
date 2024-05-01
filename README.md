@@ -6,6 +6,7 @@ This repo is used for demoing vCluster in a Platform Engineering Playground. Too
 - Crossplane
 - Backstage
 - AWS
+- GCP
 - GitHub Actions
 - vClusters
 
@@ -113,8 +114,10 @@ These are the secrets:
 ARGOCD_USER -> admin
 - AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY -> AWS credentials to access the EKS cluster and generate vClusters
 - CF_API_TOKEN and CF_ZONE_ID -> Credentials and Zone ID to access Cloudflare and create DNS records for the vClusters
+- DOCKER_USERNAME and DOCKER_PASSWORD -> These are optional if you want to build your own Backstage image and push it to Docker Hub.
+- GCP_CREDENTIALS -> Credentials to access GCP to eventually drop the vCluster Kubeconfig in a static secret in Akeyless.
 - MYGITHUB_TOKEN -> you will need to create a Classic GitHub token from developer settings as shown in the next two images, or use the same one you have for Backstage in the `backstage/my-backstage-app/secrets.sh` file.
-- TARGET_DOMAIN -> this is the hostname of the LoadBalancer that Traefik's ingressRouteTCP creates to access the vClusters. (You will fill this out later after you create the EKS cluster.)
+- TARGET_DOMAIN -> this is the hostname of the LoadBalancer that Traefik's ingressRouteTCP creates to access the vClusters. In case of EKS it's a hostname and in case of GKE it's an IP. (You will fill this out later after you create the EKS cluster.)
 
 ![Developer Settings](images/GitHub_Token_Settings.png)
 ![Token Scopes](images/GitHub_Token_Scopes.png)
@@ -123,7 +126,9 @@ ARGOCD_USER -> admin
 
 Most of the crossplane configuration in this repo were taken from Viktor Farcic, so shout out to him. Here is his original repo: https://github.com/vfarcic/crossplane-kubernetes
 
-### Step 1: Prepare Your AWS Credentials
+### AWS
+
+#### Step 1: Prepare Your Credentials
 
 Make sure you're in the `crossplane` folder.
 
@@ -138,6 +143,7 @@ aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
 ```
 
 Replace `YOUR_ACCESS_KEY_ID` and `YOUR_SECRET_ACCESS_KEY` with your actual AWS credentials and rename the file to `aws_credentials.conf`. If you are a TeKanAid Premium subscriber, you can get these credentials from the TeKanAid lesson for setting up AWS.
+
 
 ### Step 2: Create the Secret in Kubernetes
 
@@ -164,8 +170,39 @@ kubectl get secret aws-creds -n crossplane-system -o yaml
 
 This command shows the details of the `aws-creds` secret. For security reasons, the actual credentials content will be base64 encoded.
 
+### GCP
 
-## Create EKS Cluster with Crossplane
+From the root of the repo run the following. Make sure you have your `google-creds.json` file present at `backstage/my-backstage-app/packages/backend/google-creds.json`
+```bash
+kubectl --namespace crossplane-system \
+    create secret generic gcp-creds \
+    --from-file creds=./backstage/my-backstage-app/packages/backend/google-creds.json
+```
+
+Now create the ProviderConfig after replacing the `<PROJECT_ID>` with your own project ID.
+
+```bash
+export PROJECT_ID=<PROJECT_ID>
+echo "apiVersion: gcp.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  projectID: $PROJECT_ID
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: gcp-creds
+      key: creds" \
+    | kubectl apply --filename -
+```
+
+## Create K8s Clusters with Crossplane
+
+### EKS
+
+#### Create the Cluster
 
 You could create an EKS cluster directly as shown below or use backstage template to to do that which will use ArgoCD. The backstage template is explained later on.
 
@@ -176,7 +213,7 @@ kubectl --namespace infra get clusterclaims
 kubectl get managed
 ```
 
-### Access the Cluster
+#### Access the Cluster
 
 ```bash
 kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 -d > eks-kubeconfig.yaml
@@ -185,12 +222,32 @@ kubectl get nodes
 kubectl get namespaces
 ```
 
-## Delete the EKS Cluster with Crossplane
+### GCP
+
+#### Create the Cluster
+
+You could create an GKE cluster directly as shown below or use backstage template to to do that which will use ArgoCD. The backstage template is explained later on.
+
+```bash
+kubectl create namespace infra
+kubectl --namespace infra apply --filename ./crossplane/gke_claim.yaml
+kubectl --namespace infra get clusterclaims
+kubectl get managed
+```
+
+To get the kubeconfig:
+
+```bash
+gcloud container clusters get-credentials samgke --region us-east1 --project crossplaneprojects
+```
+
+## Delete the K8s Cluster with Crossplane
 
 ```bash
 kubectl --namespace infra delete \
     --filename ./crossplane/eks_claim.yaml
-
+kubectl --namespace infra delete \
+    --filename ./crossplane/gke_claim.yaml
 kubectl get managed
 
 # Wait until all the resources are deleted (ignore `object` and
@@ -265,18 +322,18 @@ But let's register a new one directly from the UI.
 
 Click the `Create` button in the left naviation pane and then click the button called: `REGISTER EXISTING COMPONENT`
 
-Enter the URL below where our EKS-Cluster-Crossplane template exists:
+Enter the URL below where our K8s-Cluster-Crossplane template exists:
 ```
-https://github.com/TeKanAid-Subscription/platform-engineering-playground/blob/main/backstage/my-backstage-app/packages/backend/templates/eks-cluster-crossplane/template.yaml
+https://github.com/TeKanAid-Subscription/platform-engineering-playground/blob/main/backstage/my-backstage-app/packages/backend/templates/generic-k8s-cluster/template.yaml
 ```
 
 Then once you've registered this template, you can now access it by clicking the `Create` button on the left navigation pane and selecting that template.
 
-You can now create an EKS cluster with crossplane using Backstage. Here is the workflow:
+You can now create a K8s cluster with crossplane using Backstage. Here is the workflow:
 
 Backstage -> GitHub Actions -> ArgoCD -> Crossplane -> you will end up with a secret in the newly created namespace in your cluster with the kubeconfig for the EKS cluster. 
 
-You can check the progress of the EKS cluster creation by running the following commands:
+You can check the progress of the K8s cluster creation by running the following commands:
 ```bash
 kubens <your-cluster-name>
 kubectl get managed
@@ -289,6 +346,14 @@ kubectl get secret a-team-eks-cluster -o jsonpath='{.data.kubeconfig}' | base64 
 export KUBECONFIG=$(pwd)/eks-kubeconfig.yaml
 kubectl get nodes
 kubectl get namespaces
+```
+
+In the case of a GKE cluster you can access the cluster using the following
+
+To get the kubeconfig:
+
+```bash
+gcloud container clusters get-credentials samgke --region us-east1 --project crossplaneprojects
 ```
 
 #### Register the New Cluster in ArgoCD
@@ -309,39 +374,61 @@ argocd cluster add my-new-eks-cluster --name eks-dev
 
 ### Add the Target Domain
 
-As platform engineers, we need to add the Target Domain to GitHub Actions secrets. The Target Domain is the hostname of the LoadBalancer that Traefik's ingressRouteTCP creates to access the vClusters. 
+As platform engineers, we need to add the Target Domain to GitHub Actions secrets. The Target Domain is the hostname of the LoadBalancer that Traefik's ingressRouteTCP creates to access the vClusters in the case of EKS. In the case of GKE, it will be an IP address.
 
 To get the value, run the following command:
 
 ```bash
+# For EKS
 kubectl get svc traefik -n traefik -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+# For GKE
+kubectl get svc traefik -n traefik -o=jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 
 Now add this value to the `TARGET_DOMAIN` GitHub Actions secret.
 
-### Add the new EKS Cluster Endpoint to Backstage Template
+### Add Parameter Values to the Backstage vCluster Template
 
-As platform engineers, we need to add the endpoint for our EKS cluster inside our new vCluster template in Backstage.
+As platform engineers, we need to add some values to variables in the Backstage vCluster template.
 
-You can get the value of the endpoint from ArgoCD under settings > clusters and get the server URL under General.
+ add the endpoint for our K8s cluster inside our new vCluster template in Backstage.
 
-Now update the `backstage/my-backstage-app/packages/backend/templates/vcluster/template.yaml` file with the new endpoint under `enum` in the `k8sHostClusterURLforArgo` field. Here is an example below.
+These are the parameters that you will need to update based on your situation.
+
+- hostEKSClusterName
+- hostEKS_URLforArgo
+- hostGKEClusterName
+- hostGKEprojectName
+- hostGKE_URLforArgo
+- hostAKSClusterName
+- hostAKS_URLforArgo
+
+They are straight forward. Just note that the `hostEKS_URLforArgo`, `hostGKE_URLforArgo`, and `hostAKS_URLforArgo` parameters are the endpoints for our host K8s clusters. You can get the value of the endpoints from ArgoCD under settings > clusters and get the server URL under General.
+
+Also remember to update  the appropriate parameters for your GitHub actions workflow name, the repo and branch name.
+
+Here is an example:
 
 ```yaml
-       k8sHostClusterURLforArgo:
-          title: The host cluster to use
-          type: string
-          description: The host cluster to use
-          enum:
-            - https://196C767B331BAA2B637123CC80FE1622.gr7.us-east-1.eks.amazonaws.com
-```
-
-Also remember to update the `github-action` step in the template with the appropriate parameters for your GitHub actions workflow name, the repo and branch name. Here is an example below.
-
-```yaml
+    - id: github-action
+      name: Trigger GitHub Action
+      action: github:actions:dispatch
+      input:
         workflowId: vcluster_deploy.yaml
-        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
-        branchOrTagName: 'master'
+        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid' # update this
+        branchOrTagName: 'master' # update this
+        workflowInputs:
+          clusterName: ${{ parameters.clusterName }}
+          repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
+          hostClusterType: ${{ parameters.hostClusterType | string}}
+          # You will need to make updates to all the parameters below.
+          hostEKSClusterName: eks-host-cluster
+          hostEKS_URLforArgo: https://5D795F1CE2F22C3B3BB93E19AA666DF4.gr7.us-east-1.eks.amazonaws.com
+          hostGKEClusterName: samgke
+          hostGKEprojectName: crossplaneprojects
+          hostGKE_URLforArgo: https://34.23.68.174
+          hostAKSClusterName: aks-host-cluster
+          hostAKS_URLforArgo: https://
 ```
 
 ### Register a New vCluster Template in Backstage

@@ -1,9 +1,9 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: gke-cluster
-  title: New GKE Cluster
-  description: Deploy a New GKE Cluster using Crossplane
+  name: Generic-K8s-Cluster
+  title: New K8s Cluster with Crossplane
+  description: Deploy a K8s Cluster using Crossplane on EKS, GKE, or AKS
 spec:
   owner: user:guest
   type: service
@@ -20,41 +20,50 @@ spec:
           ui:options:
             allowedHosts:
               - github.com
-    - title: Basic GKE Cluster Configuration
+    - title: Basic K8s Cluster Configuration
       required:
         - clusterName
-        - region
-        - machineType
-        - nodeCount
+        - nodeSize
+        - version
+        - minNodeCount
+        - provider
       properties:
         clusterName:
           title: Cluster Name
           type: string
-          description: The name of your GKE cluster
+          description: The name of your K8s cluster
           ui:autofocus: true
-        region:
-          title: Region
+        nodeSize:
+          title: NodeSize
           type: string
-          description: The region where the cluster will be deployed
+          description: The node size of the cluster to be deployed
           enum:
-            - us-east1
-            - us-central1
-        machineType:
-          title: Machine Type
+            - small
+            - medium
+            - large
+        version:
+          title: K8s Version
           type: string
-          description: The type of machine to deploy the cluster nodes
+          description: The K8s version to deploy
           enum:
-            - e2-small
-            - e2-medium
-        nodeCount:
-          title: Node Count
+            - "1.28"
+            - "1.29"
+        minNodeCount:
+          title: Minimum Node Count
           type: number
-          description: The number of nodes per AZ
+          description: The minimum number of nodes in the cluster
           enum:
             - 1
             - 2
             - 3
-
+        provider:
+          title: CloudProvider
+          type: string
+          description: The cloud provider to deploy the cluster
+          enum:
+            - aws
+            - google
+            - azure
   steps:
     - id: fetch-base
       name: Fetch Base
@@ -63,9 +72,11 @@ spec:
         url: ./content
         values:
           clusterName: ${{ parameters.clusterName }}
-          region: ${{ parameters.region }}
-          machineType: ${{ parameters.machineType }}
-          nodeCount: ${{ parameters.nodeCount | string}}
+          nodeSize: ${{ parameters.nodeSize }}
+          provider: ${{ parameters.provider }}
+          cluster: ${{ parameters.cluster }}
+          version: ${{ parameters.version | string }}
+          minNodeCount: ${{ parameters.minNodeCount | string}}
     # This step publishes the contents of the working directory to GitHub.
     - id: publish
       name: Publish
@@ -74,19 +85,19 @@ spec:
         allowedHosts: ['github.com']
         description: This is ${{ parameters.clusterName }}
         repoUrl: ${{ parameters.repoUrl }}
-    # Start a GitHub Action to build an GKE cluster
+    # Start a GitHub Action to build the K8s cluster
     - id: github-action
       name: Trigger GitHub Action
       action: github:actions:dispatch
       input:
         workflowId: deploy_with_argocd.yaml
-        repoUrl: 'github.com?repo=crossplane-gke&owner=samgabrail'
-        branchOrTagName: 'main'
+        repoUrl: 'github.com?repo=vcluster-demos&owner=tekanaid'
+        branchOrTagName: 'master'
         workflowInputs:
           clusterName: ${{ parameters.clusterName }}
-          region: ${{ parameters.region }}
-          machineType: ${{ parameters.machineType }}
-          nodeCount: ${{ parameters.nodeCount | string}}
+          nodeSize: ${{ parameters.nodeSize }}
+          version: ${{ parameters.version }}
+          minNodeCount: ${{ parameters.minNodeCount | string}}
           repoURLforArgo: ${{ steps['publish'].output.remoteUrl }}
 
   output:
