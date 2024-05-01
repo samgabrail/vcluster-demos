@@ -20,7 +20,7 @@ spec:
           ui:options:
             allowedHosts:
               - github.com
-    - title: Basic EKS Cluster Configuration
+    - title: Basic K8s Cluster Configuration
       required:
         - clusterName
         - nodeSize
@@ -31,7 +31,7 @@ spec:
         clusterName:
           title: Cluster Name
           type: string
-          description: The name of your EKS cluster
+          description: The name of your K8s cluster
           ui:autofocus: true
         nodeSize:
           title: NodeSize

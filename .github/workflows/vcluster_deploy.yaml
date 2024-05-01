@@ -11,9 +11,21 @@ on:
         required: true
       k8sHostClusterURLforArgo: 
         description: 'The URL of the host K8s cluster in Argo CD for vcluster and API deployment'
-        required: true
-      hostClusterName:
-        description: 'The name of the host K8s cluster'
+        required: false
+      hostEKSClusterName:
+        description: 'The name of the host EKS cluster'
+        required: false
+      hostAKSClusterName:
+        description: 'The name of the host AKS cluster'
+        required: false
+      hostGKEClusterName:
+        description: 'The name of the host GKE cluster'
+        required: false
+      hostGKEprojectName:
+        description: 'The name of the host GKE project'
+        required: false
+      hostClusterType:
+        description: 'The type of the host K8s cluster, either eks, gke, or aks'
         required: true
 jobs:
   deploy-vcluster:
@@ -51,7 +63,7 @@ jobs:
       run: argocd repo add ${{ github.event.inputs.repoURLforArgo }} --username samgabrail --password ${{ secrets.MYGITHUB_TOKEN }}
 
     - name: Get DNS Ready
-      run: backstage/my-backstage-app/packages/backend/templates/vcluster/content/vcluster_scripts/setdns.sh ${{ github.event.inputs.clusterName }} ${{ secrets.CF_ZONE_ID }} ${{ secrets.CF_API_TOKEN }} ${{ secrets.TARGET_DOMAIN }}
+      run: backstage/my-backstage-app/packages/backend/templates/vcluster/content/vcluster_scripts/setdns.sh ${{ github.event.inputs.clusterName }} ${{ secrets.CF_ZONE_ID }} ${{ secrets.CF_API_TOKEN }} ${{ secrets.TARGET_DOMAIN }} ${{ github.event.inputs.hostClusterType }}
 
     - name: Deploy vcluster
       run: |
@@ -80,7 +92,16 @@ jobs:
       run: |
         export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
         export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws eks update-kubeconfig --region us-east-1 --name ${{ github.event.inputs.hostClusterName }}
+        if [ "${{ github.event.inputs.hostClusterType }}" = "eks" ]; then
+          echo "Configuring AWS EKS..."
+          aws eks update-kubeconfig --region us-east-1 --name ${{ github.event.inputs.hostEKSClusterName }}
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "gke" ]; then
+          echo "Configuring GCP GKE..."
+          gcloud container clusters get-credentials ${{ github.event.inputs.hostGKEClusterName }} --region us-east1 --project ${{ github.event.inputs.hostGKEprojectName }}
+        elif [ "${{ github.event.inputs.hostClusterType }}" = "aks" ]; then
+          echo "Configuring Azure AKS..."
+          # Add commands to configure AKS kubeconfig here
+        fi
         VCLUSTER_KUBECONFIG_BASE64=$(kubectl get secret vc-${{ github.event.inputs.clusterName }} -n ${{ github.event.inputs.clusterName }} --template={{.data.config}})
         echo $VCLUSTER_KUBECONFIG_BASE64
         $VCLUSTER_KUBECONFIG_BASE64 | base64 -d | echo
