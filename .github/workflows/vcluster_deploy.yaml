@@ -116,7 +116,7 @@ jobs:
     - name: Set up Cloud SDK
       if: ${{ github.event.inputs.hostClusterType }} == 'gke'
       uses: google-github-actions/setup-gcloud@v2
-      
+
     - name: Save Kubeconfig in Akeyless
       run: |
         if [ "${{ github.event.inputs.hostClusterType }}" = "eks" ]; then
@@ -126,6 +126,7 @@ jobs:
           aws eks update-kubeconfig --region us-east-1 --name ${{ github.event.inputs.hostEKSClusterName }}
         elif [ "${{ github.event.inputs.hostClusterType }}" = "gke" ]; then
           echo "Configuring GCP GKE..."
+          gcloud components install gke-gcloud-auth-plugin
           gcloud container clusters get-credentials ${{ github.event.inputs.hostGKEClusterName }} --region us-east1 --project ${{ github.event.inputs.hostGKEprojectName }}
         elif [ "${{ github.event.inputs.hostClusterType }}" = "aks" ]; then
           echo "Configuring Azure AKS..."
